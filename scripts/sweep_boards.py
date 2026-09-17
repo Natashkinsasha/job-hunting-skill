@@ -107,11 +107,15 @@ def fetch(task):
     url_tpl, parse = ATS[ats]
     body = get(url_tpl.format(org=org))
     if not body:
-        return []
+        return [], "request failed"
     try:
-        return list(parse(org, body))
+        data = json.loads(body)
+        jobs = data if ats == "lever" else data.get("jobs")
+        if not isinstance(jobs, list):
+            return [], "invalid response schema"
+        return list(parse(org, body)), None
     except Exception:
-        return []
+        return [], "invalid response"
 
 
 def main():
@@ -121,6 +125,8 @@ def main():
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--refresh", action="store_true", help="merge newer tokens from upstream first")
     args = ap.parse_args()
+    if not args.ats:
+        ap.error("select at least one ATS")
 
     tasks = []
     for ats in args.ats:
@@ -133,13 +139,22 @@ def main():
     print(f"{len(tasks)} boards", flush=True)
 
     rows, done = [], 0
+    counts = {ats: {"ok": 0, "failed": 0} for ats in args.ats}
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
-        for got in ex.map(fetch, tasks):
+        for (ats, _), (got, error) in zip(tasks, ex.map(fetch, tasks)):
+            counts[ats]["failed" if error else "ok"] += 1
             rows += got
             done += 1
             if done % 1000 == 0:
                 print(f"  {done}/{len(tasks)} boards, {len(rows)} postings", flush=True)
 
+    for ats, count in counts.items():
+        print(f"{ats}: {count['ok']} successful, {count['failed']} failed boards", file=sys.stderr)
+    unavailable = [ats for ats, count in counts.items() if not count["ok"]]
+    if unavailable:
+        sys.exit(f"FATAL: no successful board responses for {', '.join(unavailable)}; output left unchanged")
+    if any(count["failed"] for count in counts.values()):
+        print("! Partial sweep: failed boards may hide postings; retry before declaring the search exhausted.", file=sys.stderr)
     with open(args.out, "w") as fh:
         json.dump(rows, fh)
     print(f"{len(rows)} postings -> {args.out}")

@@ -57,6 +57,9 @@ other vacancies — a drafter that sees five postings starts writing one generic
 
 ### 3. Submit serially
 
+Run this stage only in the `apply` mode authorized in `profile.md`. A draft's `status: ready`
+means its answers are complete; it does not authorize submission. In `draft` mode, return the files.
+
 One agent, one browser, walks `drafts/` in an order that **interleaves employers** — never two
 roles on the same Ashby board back to back. Per draft: open the form, scan it against the draft's
 field list (forms change; a new required field is a stop), type the answers, attach the CV, pull

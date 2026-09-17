@@ -7,8 +7,8 @@ problem to improvise.
 ```meta
 url: https://…
 ats: greenhouse | ashby | lever | …
-company: 
-role: 
+company:
+role:
 status: ready | blocked
 blocked_reason:            # exact wording of the question that has no truthful answer, if blocked
 resume: Firstname_Lastname_CV.pdf

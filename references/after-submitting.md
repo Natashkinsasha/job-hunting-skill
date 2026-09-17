@@ -30,9 +30,15 @@ Statuses worth distinguishing, because they mean different next actions:
 
 - **sent** — submitted, no acknowledgement yet
 - **blocked** — filled but not submitted, with the reason (captcha, code, ban on AI, missing answer)
-- **rejected** — with their reason if given, yours if not
+- **rejected** — an employer rejected a submitted application, with their reason if given
 - **replied** — a human wrote back; the candidate has it
 - **not applied** — filtered out, with the reason
+- **unknown** — submission may have succeeded; reconcile confirmation/mail before retrying
+
+Use the table header in `SKILL.md`. The filter excludes submission history and unknown/legacy
+statuses; `blocked` and `not applied` remain eligible. At session start, build a resume queue from
+blocked rows, resolve their recorded blockers, then update the same row after submission. A row
+becoming eligible in the filter does not itself resolve its blocker.
 
 The reason field is not bookkeeping. A run that records "❌ not a fit" 200 times teaches nobody
 anything; "❌ Java/Spring required" and "❌ must reside in the US" let the next session tighten the
@@ -58,8 +64,9 @@ to more applications out the door, and it is the part a candidate can finish in 
   (2 per 6 months is a real example). **Check before spending a slot.**
 - Five applications to one company is worse than one good one: it burns every slot and reads as
   indiscriminate.
-- Dedup on **company + role title**, never on the URL. The same role is reachable at several URLs,
-  and boards rewrite them. `filter_postings.py --applied applied-list.md` does this.
+- Match **submission history** on company + role title: URLs can change.
+  `filter_postings.py --applied applied-list.md` does this. For new postings, the first pass
+  removes repeated URLs; company/title deduplication waits until their bodies pass the filters.
 
 ## When the channel runs out
 

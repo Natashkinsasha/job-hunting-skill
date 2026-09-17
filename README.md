@@ -28,6 +28,10 @@ git clone https://github.com/Natashkinsasha/job-hunting-skill ~/.claude/skills/j
 
 Then just ask: *"find me remote backend roles and apply"*.
 
+"Find vacancies" runs in `search` mode and returns links. "Prepare applications" creates local
+drafts. Uploading a résumé and submitting forms require `apply` mode, authorized once for the
+agreed search; the skill does not ask again for each matching vacancy.
+
 ## What's in it
 
 | File | Contents |
@@ -53,10 +57,26 @@ All scripts are stdlib-only Python 3 — no dependencies, no API keys, no accoun
 ```sh
 python3 scripts/sweep_boards.py --out rows.json
 python3 scripts/filter_postings.py rows.json --profile profile.md --applied applied-list.md --out pass1.json
+python3 -c "import json;print('\n'.join(r['url'] for r in json.load(open('pass1.json'))))" > links.txt
 python3 scripts/fetch_postings.py links.txt --out bodies.json
-python3 scripts/filter_postings.py rows.json --profile profile.md --bodies bodies.json --out shortlist.json
+python3 scripts/filter_postings.py rows.json --profile profile.md --applied applied-list.md --bodies bodies.json --out shortlist.json
 python3 scripts/discover_boards.py                       # grow the board list
 ```
+
+Initialize `applied-list.md` with the table header in `SKILL.md`, or omit `--applied` when no
+history exists. Its named `Status` column distinguishes sent applications from blocked work.
+
+`fetch_postings.py` emits `[url, title, location, body_text, extraction_status]`. Status is
+`verified` for a nonempty ATS description, `unverified` for generic HTML, or `failed` for a failed
+fetch/empty description. The filter accepts old four-column rows as unverified: re-fetch or review
+them manually. Only verified descriptions drive body-based rejection. `stack_out` body mentions
+produce `manual-review` rows, since a mention does not establish a mandatory requirement.
+
+A sweep reports successful and failed boards per ATS. If any selected ATS has no successful
+response, it exits nonzero and leaves the previous output unchanged. Partial failures produce a
+warning; an incomplete sweep does not establish that the market has no more roles.
+
+Run the offline regression tests with `python3 -m unittest discover -s tests -v`.
 
 Measured on one real run: 59,103 Lever postings → 34 survivors on title and location → 19 after
 reading the bodies. Every rejection is written out with its reason, because a rejection log you

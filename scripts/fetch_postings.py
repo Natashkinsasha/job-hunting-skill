@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Resolve arbitrary job links to (url, title, location, body_text).
+"""Resolve job links to (url, title, location, body_text, extraction_status).
 
   python3 fetch_postings.py links.txt --out postings.json
   pbpaste | python3 fetch_postings.py - --out postings.json
 
 Recognises Ashby / Greenhouse / Lever / Workable / Recruitee / SmartRecruiters
 links and pulls the posting from the ATS API, which gives clean text. Anything
-else falls back to stripping the HTML.
+else falls back to stripping the HTML, marked unverified for manual review.
+Only a nonempty ATS description is verified. Legacy four-column rows have no
+provenance and must be re-fetched or reviewed before filtering on their bodies.
 
 A row with an empty body is a FETCH FAILURE, not a job without a description.
 Never reject on an empty body — re-check those by hand. In one run of 244 links,
@@ -147,12 +149,12 @@ def fetch(url):
         except Exception:
             got = None
         if got:
-            return (url,) + got
+            return (url,) + got + ("verified" if got[2].strip() else "failed",)
     page = get(url)
     if not page:
-        return (url, "", "", "")          # empty body == fetch failure, re-check by hand
+        return (url, "", "", "", "failed")
     title = re.search(r"<title[^>]*>(.*?)</title>", page, re.S | re.I)
-    return (url, clean(title.group(1)) if title else "", "", clean(page)[:20000])
+    return (url, clean(title.group(1)) if title else "", "", clean(page)[:20000], "unverified")
 
 
 def main():
@@ -176,10 +178,10 @@ def main():
 
     with open(args.out, "w") as fh:
         json.dump(rows, fh)
-    empty = sum(1 for r in rows if not r[3])
+    unverified = sum(1 for r in rows if r[4] != "verified")
     print(f"{len(rows)} postings -> {args.out}")
-    if empty:
-        print(f"! {empty} came back with no body — these are fetch failures, open them by hand")
+    if unverified:
+        print(f"! {unverified} failed or unverified descriptions — open them by hand")
 
 
 if __name__ == "__main__":

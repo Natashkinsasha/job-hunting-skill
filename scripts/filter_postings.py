@@ -77,9 +77,18 @@ def load_applied(path):
     token ("holepunch"), and an equality test would silently re-apply to everything.
     """
     applied = {}
+    status_col = None
     for line in open(path):
         cells = [c.strip() for c in line.split("|")]
+        headings = [norm(c) for c in cells]
+        if "company" in headings and "status" in headings:
+            status_col = headings.index("status")
+            continue
         if len(cells) < 5 or not cells[1] or set(cells[1]) <= set("-# "):
+            continue
+        status = norm(cells[status_col]) if status_col is not None and status_col < len(cells) else ""
+        # Missing/legacy statuses remain excluded until the agent reconciles the log.
+        if re.match(r"^(blocked|not applied)\b", status):
             continue
         company, title = norm(cells[2]), norm(cells[3])
         if not company or not title:
@@ -130,8 +139,10 @@ def main():
     rows = json.load(open(args.rows))
     bodies = {}
     if args.bodies:
-        for url, title, location, text in json.load(open(args.bodies)):
-            bodies[url] = (title, location, text)
+        for entry in json.load(open(args.bodies)):
+            url, _, _, text = entry[:4]
+            status = entry[4] if len(entry) > 4 else "unverified"
+            bodies[url] = (text, status)
     applied = load_applied(args.applied) if args.applied else {}
 
     kept, rejected, seen = [], [], set()
@@ -148,7 +159,6 @@ def main():
         if org_n in excluded:
             drop("employer excluded by profile")
             continue
-        key = (org_n, norm(title))
         if applied and was_applied(applied, org_n, title):
             drop("already applied")
             continue
@@ -164,51 +174,50 @@ def main():
         if re_geo_out and re_geo_out.search(location):
             drop(f"location excluded: {re_geo_out.search(location).group(0)}")
             continue
-        # Dedup AFTER the geography checks, never before. One role is often posted once
-        # per office plus once as remote; deduping first can keep the New York row and
-        # throw away the "Remote, Worldwide" row for the very same job.
-        if key in seen:
-            drop("duplicate of an earlier row")
-            continue
-        seen.add(key)
-
         body = bodies.get(url)
+        note = None
+        checked = "title+location"
         if body is None:
             # No body yet. Location is all we have, and it is weak evidence — an empty
             # location field means "unknown", so keep it rather than guess.
             if re_geo_in and location.strip() and not re_geo_in.search(location):
                 drop(f"location '{location}' matches no geo_in term")
                 continue
-            kept.append({"ats": ats, "org": org, "title": title, "location": location,
-                         "url": url, "checked": "title+location"})
-            continue
+            if args.bodies:
+                note = "body missing — fetch or open by hand"
+        elif body[1] != "verified" or not body[0].strip():
+            note = "body failed or unverified — fetch or open by hand"
+        else:
+            text, _ = body
+            blob = f"{title} {location} {text}"
+            if re_geo_out and re_geo_out.search(text):
+                drop(f"body excludes: {re_geo_out.search(text).group(0)}")
+                continue
+            if re_geo_in and not re_geo_in.search(f"{location} {text[:3000]}"):
+                drop("no geo_in term in location or the first 3000 chars of the body")
+                continue
+            if re_limits and re_limits.search(text):
+                drop(f"hard limit: {re_limits.search(text).group(0)}")
+                continue
+            if re_stack_in and not re_stack_in.search(blob):
+                drop("body never names a stack_in technology")
+                continue
+            if re_stack_out and (match := re_stack_out.search(text)):
+                note = f"check whether unwanted stack is required: {match.group(0)}"
+            checked = "title+location+body"
 
-        _, _, text = body
-        if not text:
-            # An empty body is a FETCH FAILURE, never a posting without a description.
-            # Measured once: 31 of 244 links came back empty and every one was a fetch
-            # problem. Keep them and open them by hand.
-            kept.append({"ats": ats, "org": org, "title": title, "location": location,
-                         "url": url, "checked": "title+location", "note": "body fetch failed — open by hand"})
+        # Until bodies are checked, different URLs can still have different requirements.
+        # Only a retained, fully checked row may reserve a company/title key.
+        key = ("role", org_n, norm(title)) if checked == "title+location+body" and not note else ("url", url)
+        if key in seen:
+            drop("duplicate of an earlier row")
             continue
-        blob = f"{title} {location} {text}"
-        if re_geo_out and re_geo_out.search(text):
-            drop(f"body excludes: {re_geo_out.search(text).group(0)}")
-            continue
-        if re_geo_in and not re_geo_in.search(f"{location} {text[:3000]}"):
-            drop("no geo_in term in location or the first 3000 chars of the body")
-            continue
-        if re_limits and re_limits.search(text):
-            drop(f"hard limit: {re_limits.search(text).group(0)}")
-            continue
-        if re_stack_out and re_stack_out.search(text):
-            drop(f"unwanted stack required: {re_stack_out.search(text).group(0)}")
-            continue
-        if re_stack_in and not re_stack_in.search(blob):
-            drop("body never names a stack_in technology")
-            continue
-        kept.append({"ats": ats, "org": org, "title": title, "location": location,
-                     "url": url, "checked": "title+location+body"})
+        seen.add(key)
+        result = {"ats": ats, "org": org, "title": title, "location": location,
+                  "url": url, "checked": "manual-review" if note else checked}
+        if note:
+            result["note"] = note
+        kept.append(result)
 
     json.dump(kept, open(args.out, "w"), indent=1)
     json.dump(rejected, open(args.rejects, "w"), indent=1)
