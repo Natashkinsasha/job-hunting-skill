@@ -23,11 +23,14 @@ The candidate hired you to do this instead of doing it themselves. Applying to 1
 
 ## Workflow
 
+0. **Resume** — read `applied-list.md` first. It is the only record of what has already been sent;
+   everything below filters against it. A fresh session that skips this re-applies to the same jobs.
 1. **Intake** — read the résumé, build `profile.md`, ask for what's missing (see below).
 2. **Source** — get postings. See `references/sourcing.md`.
-3. **Filter** — cut before opening any form. See "Filter before you open" below.
+3. **Filter** — drop anything already in `applied-list.md`, then cut before opening any form.
+   See "Filter before you open" below.
 4. **Apply** — per-ATS mechanics in `references/ats-playbook.md`.
-5. **Log** — every outcome, including rejections with reasons.
+5. **Log** — every outcome, including rejections with reasons. Write the row as each one lands.
 
 ## Step 1: Intake
 
@@ -93,7 +96,12 @@ Free-text answers are where applications are won. Aim for specific, verifiable, 
 - Lead with the concrete thing that matches their posting's hardest sentence.
 - Use numbers from the candidate's real work.
 - Name one real limitation. It makes everything else credible.
+- State location, timezone in *their* frame, work-authorisation reality and salary as plain facts — even unprompted.
 - Never restate the job description back at them.
+
+Draft cover letters as files under `cover-letters/`, never in the browser: some "Cover Letter" fields are file inputs, and typing into one opens a file dialog per keystroke.
+
+Full guidance — letter structure, essay questions, "years of X" with no zero option, geography wording, salary, AI-ban forms: `references/answering.md`.
 
 ## Logging
 
@@ -103,6 +111,33 @@ Two files, appended as you go:
 - `session-log.md` — sourcing numbers, new gotchas, blocked applications and what unblocks them.
 
 The log is how a resumed session knows what's already been tried. Never skip it to save time.
+
+### Never apply to the same posting twice
+
+A duplicate application is not a harmless retry. It reaches a human as evidence the candidate
+is not paying attention, some ATSes treat it as spam (Ashby blocks the whole board after a few),
+and one employer — RevenueCat — bars re-application to the same role for **365 days**. You cannot
+un-send it.
+
+So the log is not documentation, it is the deduplication index, and it is the only memory you have:
+a new session starts with none of the last one's context.
+
+**Before every application, and before sourcing, load `applied-list.md` and build two sets from it:**
+
+```bash
+grep -oE 'https?://[^ |]+' applied-list.md | sed 's#/$##' | sort -u > applied_urls.txt   # exact postings
+# and the ATS org tokens inside those URLs -> applied_orgs.txt   (ashby:railway, greenhouse/okx, …)
+```
+
+- **URL already in the set → skip it.** No re-reading the posting, no "maybe it changed".
+- **Org already in the set → still allowed, but space it out.** Several roles at one company are
+  normal and often smart; several *in a row on one Ashby board* trip the spam filter. Interleave
+  other employers between them.
+- Filter on these sets *before* fetching bodies — deduplication is free, fetching is not.
+
+Write the row the moment a submission confirms, not at the end of the batch. A crash, a context
+limit or a closed laptop between submit and log turns a sent application into an invisible one,
+and the next session re-sends it.
 
 ## Red flags — stop and ask
 
@@ -114,7 +149,12 @@ The log is how a resumed session knows what's already been tried. Never skip it 
 
 ## References
 
-- `references/sourcing.md` — where postings come from, with API endpoints and what's worthless
+- `references/sourcing.md` — every channel with measured yield: ATS endpoints, aggregator feeds, what's account-gated, what's dead
 - `references/ats-playbook.md` — per-ATS form mechanics and the bugs that silently eat submissions
-- `scripts/sweep_boards.py` — bulk board sweep
+- `references/answering.md` — cover letters, essay questions, geography and salary wording, AI-ban forms
+- `data/*_companies.json` — ~27,000 board tokens, shipped with the skill so a sweep needs no third party
+- `scripts/sweep_boards.py` — sweep every Ashby/Greenhouse/Lever board (`--refresh` to merge newer tokens)
 - `scripts/fetch_postings.py` — resolve arbitrary job links to title/location/body
+- `scripts/discover_boards.py` — find boards no token list has, by probing slugified company names
+
+All scripts are stdlib-only Python 3.

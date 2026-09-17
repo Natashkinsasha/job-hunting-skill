@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 """Sweep every Ashby / Greenhouse / Lever board and dump one row per posting.
 
-  python3 sweep_boards.py --out rows.json            # all three ATS, ~16k boards, ~20 min
+  python3 sweep_boards.py --out rows.json          # all three, ~16k boards, ~20 min
   python3 sweep_boards.py --ats ashby --workers 8
+  python3 sweep_boards.py --refresh                # pull newer tokens, then sweep
+
+Board tokens ship with the skill in ../data/<ats>_companies.json, so a sweep needs
+nothing but this file and a network connection to the ATS APIs themselves.
+--refresh MERGES upstream into the local list and never shrinks it: if the upstream
+dataset moves or dies, you lose new companies, not your list.
+Run discover_boards.py to find boards no dataset has.
 
 Output: JSON array of [ats, org, title, location, url].
-Descriptions are NOT fetched (that is 130k extra requests) — filter on title and
-location first, then pull bodies for the survivors with fetch_postings.py.
+Descriptions are NOT fetched (that would be 130k extra requests) — filter on title
+and location first, then pull bodies for the survivors with fetch_postings.py.
 
-Keep --workers at 8-12. Higher saturates the connection and starts failing the
+Keep --workers at 8-12. Higher saturates the connection and starts breaking the
 browser session you are applying through, which looks exactly like a broken form.
 """
-import argparse, concurrent.futures, json, sys, urllib.request
+import argparse, concurrent.futures, json, os, sys, urllib.request
 
 UA = {"User-Agent": "Mozilla/5.0"}
-TOKENS = "https://raw.githubusercontent.com/Feashliaa/job-board-aggregator/HEAD/data/{ats}_companies.json"
+DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+UPSTREAM = "https://raw.githubusercontent.com/Feashliaa/job-board-aggregator/HEAD/data/{ats}_companies.json"
 
 
 def get(url, timeout=15):
@@ -62,6 +70,35 @@ ATS = {
 }
 
 
+def token_path(ats):
+    return os.path.join(DATA, f"{ats}_companies.json")
+
+
+def load_tokens(ats):
+    try:
+        return json.load(open(token_path(ats)))
+    except Exception:
+        return []
+
+
+def refresh(ats):
+    """Merge upstream into the local list. Never shrinks it."""
+    local = load_tokens(ats)
+    body = get(UPSTREAM.format(ats=ats), timeout=40)
+    if not body:
+        print(f"  ! {ats}: upstream unreachable, keeping {len(local)} local tokens", file=sys.stderr)
+        return local
+    try:
+        upstream = json.loads(body)
+    except Exception:
+        print(f"  ! {ats}: upstream is not JSON, keeping {len(local)} local tokens", file=sys.stderr)
+        return local
+    merged = sorted(set(local) | {str(t).strip() for t in upstream if str(t).strip()}, key=str.lower)
+    json.dump(merged, open(token_path(ats), "w"), indent=0)
+    print(f"  {ats}: {len(local)} -> {len(merged)} tokens (+{len(merged) - len(local)})")
+    return merged
+
+
 def fetch(task):
     ats, org = task
     url_tpl, parse = ATS[ats]
@@ -79,15 +116,17 @@ def main():
     ap.add_argument("--ats", nargs="*", default=list(ATS), choices=list(ATS))
     ap.add_argument("--out", default="rows.json")
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--refresh", action="store_true", help="merge newer tokens from upstream first")
     args = ap.parse_args()
 
     tasks = []
     for ats in args.ats:
-        tokens = get(TOKENS.format(ats=ats))
+        tokens = refresh(ats) if args.refresh else load_tokens(ats)
         if not tokens:
-            print(f"! could not fetch token list for {ats}", file=sys.stderr)
-            continue
-        tasks += [(ats, t) for t in json.loads(tokens)]
+            # A silently empty sweep is the worst failure mode: it looks like "no jobs today".
+            sys.exit(f"FATAL: no tokens for {ats}. Expected {token_path(ats)}. "
+                     f"Re-run with --refresh, or run discover_boards.py.")
+        tasks += [(ats, t) for t in tokens]
     print(f"{len(tasks)} boards", flush=True)
 
     rows, done = [], 0

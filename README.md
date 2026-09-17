@@ -33,17 +33,29 @@ Then just ask: *"find me remote backend roles and apply"*.
 | File | Contents |
 |---|---|
 | `SKILL.md` | The workflow: intake, autonomy rules, filtering order, hidden gates, honesty rules, logging |
-| `references/sourcing.md` | Every ATS endpoint, where to get the org tokens, and measured verdicts on which channels are worth running |
+| `references/sourcing.md` | Every channel with measured yield — ATS endpoints, aggregator feeds, what's account-gated, what's dead |
 | `references/ats-playbook.md` | Per-ATS form mechanics and the bugs that silently eat submissions |
+| `references/answering.md` | Cover letters, essay questions, geography and salary wording, AI-ban forms |
+| `data/*_companies.json` | ~27,000 board tokens, shipped with the skill |
 | `scripts/sweep_boards.py` | Sweep every Ashby/Greenhouse/Lever board → one row per posting |
 | `scripts/fetch_postings.py` | Resolve arbitrary job links to title / location / body text |
+| `scripts/discover_boards.py` | Find boards no token list has, by probing slugified company names |
 
-Both scripts are stdlib-only Python 3 — no dependencies.
+All scripts are stdlib-only Python 3 — no dependencies, no API keys, no accounts.
 
 ```sh
-python3 scripts/sweep_boards.py --out rows.json
+python3 scripts/sweep_boards.py --out rows.json          # ~16k boards, ~130k postings, ~20 min
 python3 scripts/fetch_postings.py links.txt --out postings.json
+python3 scripts/discover_boards.py                       # grow the board list
 ```
+
+### Self-contained on purpose
+
+The board tokens ship in `data/`, so a sweep talks to nothing but the ATS APIs themselves. Both
+update paths — `sweep_boards.py --refresh` (merges a public dataset) and `discover_boards.py`
+(probes company-name slugs harvested from job feeds) — **merge and never shrink the list**, and a
+missing token file is a loud exit rather than a sweep that quietly returns zero jobs. An upstream
+that moves or disappears costs you new companies, not your list.
 
 ## A few things it knows that cost a failed submission to learn
 
@@ -55,6 +67,10 @@ python3 scripts/fetch_postings.py links.txt --out postings.json
   skill asks for mail access up front rather than round-tripping to you for every code.
 - "Remote" on a posting nearly always means "remote *within* the country we can employ you in".
   The only geography signal that holds up is your country appearing in the list of hiring locations.
+- A "Cover Letter" field is sometimes a **file input**, not a textarea. Typing into one opens a file
+  dialog per keystroke; 39 dialogs deep the tab has to be closed. Letters live in files for a reason.
+- The worldwide-remote market is smaller than it looks: ~130,000 postings filtered down to 60–120
+  applyable roles for one candidate. It runs out, and then only account-gated channels add yield.
 
 ## Honesty
 
