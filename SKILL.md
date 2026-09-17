@@ -76,6 +76,16 @@ Create `applied-list.md` with the Logging table header before using `--applied`,
 on a first search with no application history. A partial sweep is incomplete coverage; retry failed
 boards before concluding there are no more roles. A fully failed ATS exits without replacing the output.
 
+## Running in parallel
+
+Use drafting workers in `draft` or `apply` mode; run the submitter only in authorized `apply` mode.
+Parallelise the writing, not the clicking. `scripts/form_questions.py` reads Greenhouse forms and
+their gates without a browser; N drafters (no browser, no mailbox, no log) each write
+`drafts/<company>-<role>.md` from `templates/draft.md`; one submitter walks the drafts through the
+single browser, interleaving employers. One-agent-per-vacancy with its own browser fails on a
+shared IP (Ashby spam filter), per-company Greenhouse codes that cancel each other, and a shared log.
+Full design in `references/parallel.md`.
+
 ## Step 1: Intake
 
 Copy `templates/profile.md` into the working directory and fill it. Search needs the criteria half;
@@ -221,11 +231,14 @@ These pause the affected application within the authorized mode; continue indepe
 - `references/answering.md` — cover letters, essay questions, geography and salary wording, AI-ban forms
 - `references/email.md` — verification codes, applying by email, driving Gmail, and the privacy line
 - `references/after-submitting.md` — replies, statuses, the blocked pile, and what to do when the channel runs out
+- `references/parallel.md` — parallel drafting, serial submission: the pipeline and why one-agent-per-vacancy fails
 - `templates/profile.md` — the intake questionnaire and the criteria block the filter reads
+- `templates/draft.md` — one file per application: every field's answer, letter, essays, ready/blocked
 - `data/*_companies.json` — ~27,000 board tokens, shipped with the skill so a sweep needs no third party
 - `scripts/sweep_boards.py` — sweep every Ashby/Greenhouse/Lever board (`--refresh` to merge newer tokens)
 - `scripts/filter_postings.py` — cut a sweep to a shortlist using the profile, with audited rejections
 - `scripts/fetch_postings.py` — resolve arbitrary job links to title/location/body
+- `scripts/form_questions.py` — read a Greenhouse application form and flag its gates, no browser
 - `scripts/discover_boards.py` — find boards no token list has, by probing slugified company names
 
 All scripts are stdlib-only Python 3.

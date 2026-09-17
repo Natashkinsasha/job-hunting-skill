@@ -47,6 +47,9 @@ agreed search; the skill does not ask again for each matching vacancy.
 | `scripts/sweep_boards.py` | Sweep every Ashby/Greenhouse/Lever board → one row per posting |
 | `scripts/filter_postings.py` | Cut a sweep to a shortlist using the profile, with audited rejections |
 | `scripts/fetch_postings.py` | Resolve arbitrary job links to title / location / body text |
+| `scripts/form_questions.py` | Read a Greenhouse application form and flag its gates — no browser |
+| `references/parallel.md` | Parallel drafting, serial submission — and why one-agent-per-vacancy fails |
+| `templates/draft.md` | One file per application, ready or blocked, consumed by the submitter |
 | `scripts/discover_boards.py` | Find boards no token list has, by probing slugified company names |
 
 All scripts are stdlib-only Python 3 — no dependencies, no API keys, no accounts.
@@ -78,6 +81,16 @@ Run the offline regression tests with `python3 -m unittest discover -s tests -v`
 Measured on one real run: 59,103 Lever postings → 34 survivors on title and location → 19 after
 reading the bodies. Every rejection is written out with its reason, because a rejection log you
 can't audit is how a good role gets dropped for the wrong reason and nobody notices.
+
+### Parallel, where it helps
+
+Greenhouse exposes its whole application form through the public API — every field, required flag
+and dropdown option — so `form_questions.py` sees the gate ("country you reside in", "authorised to
+work in …", "years of X" with no zero option) before anyone opens a browser. Drafting is then
+embarrassingly parallel: N agents, no browser, no mailbox, one `drafts/<company>-<role>.md` each,
+`ready` or `blocked` with the field quoted. One submitter walks the drafts through the single
+browser. One-agent-per-vacancy is the obvious design and the wrong one: shared IP, per-company
+verification codes that cancel each other, one log.
 
 ### Self-contained on purpose
 
