@@ -18,7 +18,7 @@ need to click, type character by character, read back what the widget actually c
 through a real file chooser, and watch the network response. `curl`-ing a form POST does not work and is
 not worth attempting. Without a browser, run the search and hand the candidate a ranked queue of links.
 
-Three things to set up on day one, each of which has cost a wasted hour: copy the résumé into the
+Before submitting in `apply` mode, three things to set up: copy the résumé into the
 working directory (the file chooser is sandboxed and can't reach `~/Documents`); have the candidate log
 into their mail in that browser (Greenhouse gates submission behind an emailed code — `references/email.md`);
 and never navigate away from a half-filled form while waiting, it loses its state. Details in
@@ -26,19 +26,32 @@ and never navigate away from a half-filled form while waiting, it loses its stat
 
 ## Run autonomously
 
+**Choose the mode from the user's request and record it in `profile.md`.** A request to find jobs
+authorizes searching, not sending the candidate's information to employers.
+
+| Mode | Request examples | Actions |
+|---|---|---|
+| `search` | "find vacancies", "show me remote roles" | Source, filter, return a ranked shortlist. Do not fill forms, upload files or submit. |
+| `draft` | "prepare these applications" | Search and write application drafts locally. Do not upload or submit. |
+| `apply` | "apply for me", "find roles and apply" | Fill, upload and submit within the agreed criteria. No permission needed per application. |
+
+If the request is ambiguous, continue in `search` and clarify before uploading or submitting.
+Existing explicit authorization carries across sessions; a later instruction narrowing it takes priority.
+Mail access is separate: request it only when the authorized task needs codes or application replies.
+
 The candidate hired you to do this instead of doing it themselves. Applying to 100 roles means ~100 decisions; if each one becomes a question, you have saved them nothing.
 
-**Default to acting.** Source, filter, fill, submit, log, move to the next one. Do not ask permission per application, do not present a shortlist for approval, do not report after each submission. Work through the queue and report in batches.
+**Default to acting within the chosen mode.** In `apply`, source, filter, fill, submit, log, move to the next one. Do not ask permission per application or report after each submission. Work through the queue and report in batches.
 
 **Batch every question.** When you genuinely need input, collect the open questions and ask them together at a natural break, then keep working on everything that doesn't depend on the answer. A blocked application goes on a blocked list; it does not stop the run.
 
-**Only the "Red flags" list below stops you.** Everything else — an ambiguous title, a location you have to reason about, a cover letter to write — you decide.
+**Within the authorized mode, the "Red flags" below pause an application.** Everything else — an ambiguous title, a location you have to reason about, a cover letter to write — you decide.
 
 **Session breaks are normal.** The candidate will go to sleep mid-run. Keep going, and make the log good enough that the next session can resume from it cold.
 
 ## Workflow
 
-0. **If resuming** — read `applied-list.md` and `profile.md` first, then sweep the mail. The log is the
+0. **If resuming** — read `applied-list.md` and `profile.md` first, then sweep application mail if access is authorized. The log is the
    only record of what has already been sent; a session that skips it re-applies to the same jobs. And
    replies have deadlines while postings don't — a scheduling link that expired while you swept 16,000
    boards is a worse outcome than ten applications not sent. See `references/after-submitting.md`.
@@ -46,7 +59,8 @@ The candidate hired you to do this instead of doing it themselves. Applying to 1
 2. **Source** — `scripts/sweep_boards.py`. Channels and measured yields in `references/sourcing.md`.
 3. **Filter** — `scripts/filter_postings.py` on titles and locations, fetch bodies for the survivors,
    filter again. Then check the form itself for gates before filling it.
-4. **Apply** — per-ATS mechanics in `references/ats-playbook.md`, wording in `references/answering.md`.
+4. **Deliver for the chosen mode** — `search`: ranked links; `draft`: local drafts using `references/answering.md`;
+   `apply`: submit using `references/ats-playbook.md`. Review every `manual-review` row before applying.
 5. **Log** — every outcome, including rejections with reasons. Write the row as each one lands.
 
 ```sh
@@ -58,9 +72,14 @@ python3 scripts/filter_postings.py rows.json --profile profile.md --applied appl
         --bodies bodies.json --out shortlist.json --rejects rejects.json
 ```
 
+Create `applied-list.md` with the Logging table header before using `--applied`, or omit that flag
+on a first search with no application history. A partial sweep is incomplete coverage; retry failed
+boards before concluding there are no more roles. A fully failed ATS exits without replacing the output.
+
 ## Step 1: Intake
 
-Copy `templates/profile.md` into the working directory and fill it. It has two halves and you need both before applying to anything.
+Copy `templates/profile.md` into the working directory and fill it. Search needs the criteria half;
+collect personal details only for drafting or applying. Both halves are needed before applying.
 
 ### Half one — what we're looking for
 
@@ -91,7 +110,11 @@ Opening a form costs ~10 minutes. Filtering costs seconds. Check in this order a
 
 Steps 1–3 are `scripts/filter_postings.py`, run twice: once on the sweep (title and location only, which removes ~99% of a 130k corpus) and again with `--bodies` once you've fetched the survivors. It writes every rejection **with its reason** — a rejection log you can't audit is how a good role gets dropped for the wrong reason and nobody notices.
 
-Two things it gets right that a hand-rolled filter gets wrong. It **dedups after the geography checks, never before**: one role is often posted once per office plus once as remote, and deduping first keeps the New York row and throws away "Remote, Worldwide" for the same job. And it **keeps postings whose body came back empty** — an empty body is a fetch failure, not a posting without a description. Measured once: 31 of 244 links came back empty and every single one was a fetch problem.
+Deduplicate only retained rows. The first pass removes repeated URLs; company/title deduplication
+waits until bodies pass all checks, so an office listing or an unsuitable stack cannot hide a suitable
+alternative. Failed, unverified and legacy descriptions remain for manual review. A `stack_out` mention
+in the body also requires context review: distinguish mandatory experience from a bonus, a negation,
+or a migration away from that technology. `manual-review` is not clearance to apply.
 
 Roughly half of postings that look perfect by title and location still fail on stack or a hidden gate.
 
@@ -134,10 +157,21 @@ Full guidance — letter structure, essay questions, "years of X" with no zero o
 
 ## Logging
 
-Two files, appended as you go:
+Two files, maintained as you go:
 
 - `applied-list.md` — one row per posting: number, company, role, geography, URL, status. Rejections get a **reason**: "❌ Java/Spring required", not "❌ not a fit".
 - `session-log.md` — sourcing numbers, new gotchas, blocked applications and what unblocks them.
+
+Use this table layout; `Status` must be a named column (date and letter may follow it):
+
+```markdown
+| # | Company | Role | Geography | URL | Status | Date | Letter |
+|---|---|---|---|---|---|---|---|
+```
+
+Use `sent`, `replied`, `rejected` (employer rejection), `blocked: <reason>` (not submitted), or
+`not applied: <reason>` (filtered out). Update the existing row as its state changes. If submission
+may have succeeded, use `unknown` and reconcile against confirmation/mail before retrying.
 
 The log is how a resumed session knows what's already been tried. Never skip it to save time.
 
@@ -156,11 +190,15 @@ applied-list.md` matches on **company + role title**, not URL — the same role 
 URLs and boards rewrite them — and compares company names by containment, because the log holds a
 human name ("Holepunch (Tether)") while the sweep holds an ATS token ("holepunch").
 
-- **Already in the log → skip it.** No re-reading the posting, no "maybe it changed".
+- **Sent, replied or rejected → skip it.** Missing or unknown statuses also block a retry until reconciled.
+- **Blocked → resume queue.** At session start, collect these rows with their blockers and work on
+  those now unblocked before sourcing. `--applied` leaves them eligible; it does not mean the blocker is resolved.
+- **Not applied → re-evaluate against current criteria.** These rows are not submission history.
 - **Same company, different role → allowed, but space it out.** Several roles at one company are
   normal and often smart; several *in a row on one Ashby board* trip the spam filter. Interleave
   other employers between them.
-- Dedup *before* fetching bodies — deduplication is free, fetching is not.
+- Check submission history and repeated URLs *before* fetching bodies. Defer company/title
+  deduplication within the new shortlist until the bodies have passed their checks.
 
 Write the row the moment a submission confirms, not at the end of the batch. A crash, a context
 limit or a closed laptop between submit and log turns a sent application into an invisible one,
@@ -168,7 +206,7 @@ and the next session re-sends it.
 
 ## Red flags — stop and ask
 
-This is the complete list. Nothing else stops the run.
+These pause the affected application within the authorized mode; continue independent work.
 
 - A required field has no truthful option — including an address, ID number or salary history you weren't given
 - The employer bans AI assistance

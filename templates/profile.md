@@ -10,6 +10,9 @@ looking for** — `scripts/filter_postings.py` parses it into filters, so it has
 
 ## Search criteria
 
+Mode: `search` / `draft` / `apply` — record the user's request authorizing it and its scope here.
+Default to `search` when submission has not been requested; retain explicit authorization on resume.
+
 Machine-read. Format is one `key: comma, separated, values` per line — not YAML, no nesting,
 no quotes, no regex. Each value is matched case-insensitively as a **whole word** (`go` does not
 match "going"; `.net` still matches "ASP.NET"). Delete a key to disable that check; an empty key
@@ -38,7 +41,8 @@ by *you*, not by the filter — they steer how you judge a posting and fill a fo
 `filter_postings.py`: `titles_in` — at least one must appear in the job title. `titles_out` — any
 match rejects. `stack_in` — at least one must appear in the body (this is the strongest filter;
 a posting that never names the candidate's language is not their job however good the title looks).
-`stack_out` — matches a *hard requirement* for a stack they don't have. `geo_out` — a phrase that
+`stack_out` — rejects a match in the title; body mentions go to manual review to establish whether
+the technology is actually required. `geo_out` — a phrase that
 means the candidate can't be hired; any match rejects. `geo_in` — at least one must appear in the
 location field or the first part of the body. `hard_limits` — phrases in the body that the candidate
 has ruled out entirely. `exclude_employers` — companies to skip, whatever they post.
@@ -54,7 +58,7 @@ country appearing in the list of hiring locations. Workplace type belongs in `wo
 
 ## Who the candidate is
 
-Ask for all of this **in one batch** after reading the résumé. These are the things every form
+For `draft` or `apply`, ask for the missing details **in one batch** after reading the résumé. These are the things every form
 demands and no résumé contains.
 
 | Field | Value |
