@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+rows.json
+postings.json
+profile.md
+applied-list.md
+session-log.md
