@@ -83,7 +83,8 @@ demands and no résumé contains.
 | Pronouns | |
 | Willing to relocate? Where? | |
 | Reason for leaving last role — answer or leave blank when optional? | |
-| Anything they refuse outright | video interviews, AI screens, client-facing roles, on-call, specific employers |
+| On-call rota — willing? any experience? | forms ask this directly; "not stated" blocks a draft |
+| Anything they refuse outright | video interviews, AI screens, client-facing roles, specific employers |
 
 ## Facts worth having ready
 

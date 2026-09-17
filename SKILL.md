@@ -58,6 +58,15 @@ python3 scripts/filter_postings.py rows.json --profile profile.md --applied appl
         --bodies bodies.json --out shortlist.json --rejects rejects.json
 ```
 
+## Running in parallel
+
+Parallelise the writing, not the clicking. `scripts/form_questions.py` reads Greenhouse forms and
+their gates without a browser; N drafters (no browser, no mailbox, no log) each write
+`drafts/<company>-<role>.md` from `templates/draft.md`; one submitter walks the drafts through the
+single browser, interleaving employers. One-agent-per-vacancy with its own browser fails on a
+shared IP (Ashby spam filter), per-company Greenhouse codes that cancel each other, and a shared log.
+Full design in `references/parallel.md`.
+
 ## Step 1: Intake
 
 Copy `templates/profile.md` into the working directory and fill it. It has two halves and you need both before applying to anything.
@@ -183,11 +192,14 @@ This is the complete list. Nothing else stops the run.
 - `references/answering.md` — cover letters, essay questions, geography and salary wording, AI-ban forms
 - `references/email.md` — verification codes, applying by email, driving Gmail, and the privacy line
 - `references/after-submitting.md` — replies, statuses, the blocked pile, and what to do when the channel runs out
+- `references/parallel.md` — parallel drafting, serial submission: the pipeline and why one-agent-per-vacancy fails
 - `templates/profile.md` — the intake questionnaire and the criteria block the filter reads
+- `templates/draft.md` — one file per application: every field's answer, letter, essays, ready/blocked
 - `data/*_companies.json` — ~27,000 board tokens, shipped with the skill so a sweep needs no third party
 - `scripts/sweep_boards.py` — sweep every Ashby/Greenhouse/Lever board (`--refresh` to merge newer tokens)
 - `scripts/filter_postings.py` — cut a sweep to a shortlist using the profile, with audited rejections
 - `scripts/fetch_postings.py` — resolve arbitrary job links to title/location/body
+- `scripts/form_questions.py` — read a Greenhouse application form and flag its gates, no browser
 - `scripts/discover_boards.py` — find boards no token list has, by probing slugified company names
 
 All scripts are stdlib-only Python 3.
