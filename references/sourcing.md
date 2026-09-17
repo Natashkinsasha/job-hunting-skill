@@ -42,7 +42,7 @@ https://raw.githubusercontent.com/Feashliaa/job-board-aggregator/HEAD/data/<ats>
 ```
 `<ats>` ∈ `ashby`, `greenhouse`, `lever`, `workday`, `bamboohr`, `icims`.
 
-Sizes as measured: ashby ~2.3k, greenhouse ~2.2k, lever ~1.3k, bamboohr ~11.3k, workday ~12.9k.
+Sizes as measured 2026-09-17: ashby 3,161 · greenhouse 8,333 · lever 4,368 · bamboohr 11,316 · workday 12,884.
 
 Other ways to discover tokens, in rough order of yield:
 - Company careers pages: the board is in an `<iframe src>` or a `fetch()` to one of the hosts above.

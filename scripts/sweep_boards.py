@@ -37,8 +37,11 @@ def parse_ashby(org, body):
 
 def parse_greenhouse(org, body):
     for j in json.loads(body).get("jobs", []):
+        # absolute_url is often the company's own careers page (…?gh_jid=123), which no
+        # API resolves. The canonical board URL always works — rebuild it from the id.
+        url = f"https://job-boards.greenhouse.io/{org}/jobs/{j.get('id')}"
         yield ("greenhouse", org, j.get("title", ""),
-               (j.get("location") or {}).get("name", ""), j.get("absolute_url", ""))
+               (j.get("location") or {}).get("name", ""), url)
 
 
 def parse_lever(org, body):
