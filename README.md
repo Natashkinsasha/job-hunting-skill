@@ -36,18 +36,28 @@ Then just ask: *"find me remote backend roles and apply"*.
 | `references/sourcing.md` | Every channel with measured yield — ATS endpoints, aggregator feeds, what's account-gated, what's dead |
 | `references/ats-playbook.md` | Per-ATS form mechanics and the bugs that silently eat submissions |
 | `references/answering.md` | Cover letters, essay questions, geography and salary wording, AI-ban forms |
+| `references/email.md` | Verification codes, applying by email, driving Gmail, the privacy line |
+| `references/after-submitting.md` | Replies, statuses, the blocked pile, what to do when the channel runs out |
+| `templates/profile.md` | The intake questionnaire, and the criteria block the filter reads |
 | `data/*_companies.json` | ~27,000 board tokens, shipped with the skill |
 | `scripts/sweep_boards.py` | Sweep every Ashby/Greenhouse/Lever board → one row per posting |
+| `scripts/filter_postings.py` | Cut a sweep to a shortlist using the profile, with audited rejections |
 | `scripts/fetch_postings.py` | Resolve arbitrary job links to title / location / body text |
 | `scripts/discover_boards.py` | Find boards no token list has, by probing slugified company names |
 
 All scripts are stdlib-only Python 3 — no dependencies, no API keys, no accounts.
 
 ```sh
-python3 scripts/sweep_boards.py --out rows.json          # ~16k boards, ~130k postings, ~20 min
-python3 scripts/fetch_postings.py links.txt --out postings.json
+python3 scripts/sweep_boards.py --out rows.json
+python3 scripts/filter_postings.py rows.json --profile profile.md --applied applied-list.md --out pass1.json
+python3 scripts/fetch_postings.py links.txt --out bodies.json
+python3 scripts/filter_postings.py rows.json --profile profile.md --bodies bodies.json --out shortlist.json
 python3 scripts/discover_boards.py                       # grow the board list
 ```
+
+Measured on one real run: 59,103 Lever postings → 34 survivors on title and location → 19 after
+reading the bodies. Every rejection is written out with its reason, because a rejection log you
+can't audit is how a good role gets dropped for the wrong reason and nobody notices.
 
 ### Self-contained on purpose
 

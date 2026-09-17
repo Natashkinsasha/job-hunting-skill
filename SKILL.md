@@ -9,6 +9,28 @@ Run a job search end to end: intake a résumé, source openings, filter them, fi
 
 **Core principle: the candidate's truth is the hard constraint.** Everything else — speed, volume, clever sourcing — is negotiable. A form you cannot answer truthfully is a form you stop and ask about.
 
+## What you need before you start
+
+**A driveable browser — in practice the Playwright MCP server — is a hard requirement for applying.**
+Sourcing and filtering are plain HTTP and need nothing but `curl` and the scripts here. Submitting is
+not: every ATS form in `references/ats-playbook.md` is a React app that rejects text you inject, so you
+need to click, type character by character, read back what the widget actually committed, attach a file
+through a real file chooser, and watch the network response. `curl`-ing a form POST does not work and is
+not worth attempting. Without a browser, run the search and hand the candidate a ranked queue of links.
+
+Three things about that browser, each of which has cost a wasted hour:
+
+- **The file chooser is sandboxed to the workspace.** Uploading the résumé from `~/Documents` or
+  `~/Downloads` fails with "outside allowed roots". Copy it into the working directory once, at the start
+  of the run, and attach it from there.
+- **Ask the candidate to log into their mail in that same browser, on day one.** Greenhouse gates
+  submission behind an 8-character code mailed to them (`from:greenhouse-mail.io`, "Security code for your
+  application to \<Company\>"). Logged in, you read the newest code yourself and finish the submission in
+  the same minute. Not logged in, every code is a round-trip, and each failed submit invalidates the last
+  code — the pending application sits there until they answer.
+- **Keep the tab open** while you wait for anything. A Greenhouse form holds its state, including the
+  uploaded résumé and every essay; navigating away means filling it all in again.
+
 ## Run autonomously
 
 The candidate hired you to do this instead of doing it themselves. Applying to 100 roles means ~100 decisions; if each one becomes a question, you have saved them nothing.
@@ -23,18 +45,41 @@ The candidate hired you to do this instead of doing it themselves. Applying to 1
 
 ## Workflow
 
-0. **Resume** — read `applied-list.md` first. It is the only record of what has already been sent;
-   everything below filters against it. A fresh session that skips this re-applies to the same jobs.
-1. **Intake** — read the résumé, build `profile.md`, ask for what's missing (see below).
-2. **Source** — get postings. See `references/sourcing.md`.
-3. **Filter** — drop anything already in `applied-list.md`, then cut before opening any form.
-   See "Filter before you open" below.
-4. **Apply** — per-ATS mechanics in `references/ats-playbook.md`.
+0. **Resume** — read `applied-list.md` and `profile.md` first, then sweep the mail. The log is the only
+   record of what has already been sent; a fresh session that skips it re-applies to the same jobs. And
+   replies have deadlines while postings don't — a scheduling link that expired while you swept 16,000
+   boards is a worse outcome than ten applications not sent. See `references/after-submitting.md`.
+1. **Intake** — fill `templates/profile.md`: what we're looking for, then who the candidate is.
+2. **Source** — `scripts/sweep_boards.py`. Channels and measured yields in `references/sourcing.md`.
+3. **Filter** — `scripts/filter_postings.py` on titles and locations, fetch bodies for the survivors,
+   filter again. Then check the form itself for gates before filling it.
+4. **Apply** — per-ATS mechanics in `references/ats-playbook.md`, wording in `references/answering.md`.
 5. **Log** — every outcome, including rejections with reasons. Write the row as each one lands.
+
+```sh
+python3 scripts/sweep_boards.py --out rows.json
+python3 scripts/filter_postings.py rows.json --profile profile.md --applied applied-list.md --out pass1.json
+python3 -c "import json;print('\n'.join(r['url'] for r in json.load(open('pass1.json'))))" > links.txt
+python3 scripts/fetch_postings.py links.txt --out bodies.json
+python3 scripts/filter_postings.py rows.json --profile profile.md --applied applied-list.md \
+        --bodies bodies.json --out shortlist.json --rejects rejects.json
+```
 
 ## Step 1: Intake
 
-Read the résumé, then ask **once, as a single batch**, for what forms demand and résumés never contain. Don't dribble these out one at a time.
+Copy `templates/profile.md` into the working directory and fill it. It has two halves and you need both before applying to anything.
+
+### Half one — what we're looking for
+
+Ask this **first**. Every hour of sourcing against the wrong criteria is wasted, and these constraints are discovered painfully if you don't ask: in one run "remote only", "no US-timezone overlap", "not DevOps", "no client-facing roles", "exclude this specific employer" and "no video interviews" each surfaced *after* applications had already gone out to roles that violated them.
+
+Roles and titles wanted · titles refused · stack · stacks they won't work in · remote / hybrid / on-site · acceptable timezones · countries they can actually be hired in · employers to exclude outright · salary floor.
+
+This half lives in a fenced ```criteria``` block that `filter_postings.py` parses directly, so it is both the brief and the filter. One trap worth repeating: **never put the word `remote` in `geo_in`** — several boards append the workplace type to the location string, so it matches everything and silently disables the geography check.
+
+### Half two — who the candidate is
+
+Ask **once, as a single batch**, for what forms demand and résumés never contain. Don't dribble these out one at a time.
 
 | Field | Why it's needed |
 |---|---|
@@ -51,7 +96,9 @@ Read the résumé, then ask **once, as a single batch**, for what forms demand a
 | Reason for leaving — answer or skip? | If they say skip, skip when optional |
 | Street address + postcode | Some forms require it; **never invent one without asking** |
 
-Write answers to `profile.md` and re-read it at the start of every session. Add to it whenever the candidate reveals a new constraint mid-run.
+Write answers to `profile.md` and re-read it at the start of every session. Its last section is append-only: every constraint the candidate reveals mid-run goes there, dated, because that is what a resumed session reads instead of asking the same question again.
+
+**The résumé itself.** Get the actual file and attach that same file everywhere. Don't rewrite it per application — a tailored cover letter earns its time, a tailored CV doesn't, and two CVs that disagree become a problem in an interview. Name it `<Firstname>_<Lastname>_CV.pdf`; some ATS show the filename to the reviewer. If they have no PDF, ask for one rather than generating a document that claims to be their CV.
 
 **Ask for email access early.** Greenhouse and others gate submission behind an emailed code. Say plainly: "log into your mail in the browser I'm driving, and I'll pull verification codes myself." Without it, every code costs a round-trip to the candidate.
 
@@ -60,11 +107,15 @@ Write answers to `profile.md` and re-read it at the start of every session. Add 
 Opening a form costs ~10 minutes. Filtering costs seconds. Check in this order and stop at the first failure:
 
 1. **Title** — is it the role type they want? Reject infra/QA/sales/design titles unless asked for.
-2. **Stack** — fetch the posting body and grep for their actual stack. A posting that never names their language is not their job, however good the title looks.
-3. **Geography** — does the location admit where they live?
+2. **Geography** — does the location admit where they live?
+3. **Stack** — fetch the posting body and grep for their actual stack. A posting that never names their language is not their job, however good the title looks.
 4. **Gates inside the form** — see below.
 
-Roughly half of postings that look perfect by title and location fail on stack or a hidden gate.
+Steps 1–3 are `scripts/filter_postings.py`, run twice: once on the sweep (title and location only, which removes ~99% of a 130k corpus) and again with `--bodies` once you've fetched the survivors. It writes every rejection **with its reason** — a rejection log you can't audit is how a good role gets dropped for the wrong reason and nobody notices.
+
+Two things it gets right that a hand-rolled filter gets wrong. It **dedups after the geography checks, never before**: one role is often posted once per office plus once as remote, and deduping first keeps the New York row and throws away "Remote, Worldwide" for the same job. And it **keeps postings whose body came back empty** — an empty body is a fetch failure, not a posting without a description. Measured once: 31 of 244 links came back empty and every single one was a fetch problem.
+
+Roughly half of postings that look perfect by title and location still fail on stack or a hidden gate.
 
 ## Step 3: Hidden gates
 
@@ -129,6 +180,11 @@ grep -oE 'https?://[^ |]+' applied-list.md | sed 's#/$##' | sort -u > applied_ur
 # and the ATS org tokens inside those URLs -> applied_orgs.txt   (ashby:railway, greenhouse/okx, …)
 ```
 
+`filter_postings.py --applied applied-list.md` does the same job on **company + role title**, which
+catches the case the URL set misses: the same role reachable at several URLs, or a board that rewrote
+them. It compares company names by containment, because the log holds a human name
+("Holepunch (Tether)") while the sweep holds an ATS token ("holepunch"). Use both.
+
 - **URL already in the set → skip it.** No re-reading the posting, no "maybe it changed".
 - **Org already in the set → still allowed, but space it out.** Several roles at one company are
   normal and often smart; several *in a row on one Ashby board* trip the spam filter. Interleave
@@ -152,8 +208,12 @@ and the next session re-sends it.
 - `references/sourcing.md` — every channel with measured yield: ATS endpoints, aggregator feeds, what's account-gated, what's dead
 - `references/ats-playbook.md` — per-ATS form mechanics and the bugs that silently eat submissions
 - `references/answering.md` — cover letters, essay questions, geography and salary wording, AI-ban forms
+- `references/email.md` — verification codes, applying by email, driving Gmail, and the privacy line
+- `references/after-submitting.md` — replies, statuses, the blocked pile, and what to do when the channel runs out
+- `templates/profile.md` — the intake questionnaire and the criteria block the filter reads
 - `data/*_companies.json` — ~27,000 board tokens, shipped with the skill so a sweep needs no third party
 - `scripts/sweep_boards.py` — sweep every Ashby/Greenhouse/Lever board (`--refresh` to merge newer tokens)
+- `scripts/filter_postings.py` — cut a sweep to a shortlist using the profile, with audited rejections
 - `scripts/fetch_postings.py` — resolve arbitrary job links to title/location/body
 - `scripts/discover_boards.py` — find boards no token list has, by probing slugified company names
 

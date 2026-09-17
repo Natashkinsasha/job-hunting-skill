@@ -46,8 +46,8 @@ Direct form URL, bypassing the iframe:
 `https://job-boards.greenhouse.io/embed/job_app?for=<org>&token=<jobId>`
 EU boards exist at `job-boards.eu.greenhouse.io` but the **API host is the same** — `boards-api.greenhouse.io` serves both. There is no separate EU API.
 
-- JavaScript `.value` injection **works** here.
-- `#country` is the phone country picker, not residence. Type and press `Enter`.
+- JavaScript `.value` injection **works** on the plain text inputs — but not on the phone/country pair or any react-select (see the two sections below).
+- `#country` is the phone country picker, not residence.
 - `#candidate-location` is a geocoded autocomplete: type, wait, `Enter`.
 - Resume: the visible button is a sibling of the hidden `#resume` input — `div:has(> #resume) button`.
 - react-select dropdowns: click the input, then read `#react-select-<fieldId>-listbox` for options.
@@ -55,6 +55,33 @@ EU boards exist at `job-boards.eu.greenhouse.io` but the **API host is the same*
 **HTTP 428 on submit = e-mail verification code.** The page grows eight `#security-input-N` boxes. Paste the whole 8-character code into `#security-input-0` — it distributes itself. Get the code from the candidate's mail: search `from:greenhouse-mail.io`, subject "Security code for your application to \<Company\>". Codes are **per company**: once verified, other roles at that company submit freely. Each failed submit issues a *new* code, so always use the newest mail.
 
 API: `https://boards-api.greenhouse.io/v1/boards/<org>/jobs` and `.../jobs/<id>` for the body.
+
+## Greenhouse: the phone widget is not a text input
+
+`#phone` and its country picker `#country` are a React/`intl-tel-input` pair. Injecting `.value` into
+`#phone` leaves the number visible in the DOM and invisible to the form: submit comes back with
+**"Phone is required"** and **"Select a country"** on a field that plainly shows a number. Type both:
+`#country` character by character, take the option out of `react-select-country-listbox` (the
+`iti-0__country-listbox` next to it is dead markup), then `#phone` **without the dialling code**.
+
+The rest of Greenhouse's plain text inputs do accept `.value` injection — this widget is the exception,
+so a form can fail on two fields while the other eight went in fine.
+
+## Greenhouse: never pick a react-select option with arrow keys
+
+`ArrowDown` ×N + `Enter` does **not** land on the Nth option — the first `ArrowDown` opens the menu and
+highlights option 1, so the count is off by one and there is no error when it lands somewhere wrong. On a
+"How many years of professional experience" field that silently submits a **false answer about the
+candidate**. Type the option's text instead, confirm the listbox has narrowed to it, then `Enter`.
+
+Verify every dropdown before submitting — they all render into the same class:
+
+```js
+[...document.querySelectorAll('.select__single-value')].map(e => e.innerText)
+```
+
+Read that list as a sentence about the candidate. If any entry is wrong, fix it before you submit; after
+submission there is no edit.
 
 ## Lever
 
