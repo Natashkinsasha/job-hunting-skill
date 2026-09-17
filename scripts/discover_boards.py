@@ -37,7 +37,7 @@ PROBES = {
 def get(url, timeout=15, cap=None):
     try:
         resp = urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout)
-        return resp.read(cap) .decode("utf-8", "ignore") if cap else resp.read().decode("utf-8", "ignore")
+        return (resp.read(cap) if cap else resp.read()).decode("utf-8", "ignore")
     except Exception:
         return None
 

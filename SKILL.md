@@ -18,18 +18,11 @@ need to click, type character by character, read back what the widget actually c
 through a real file chooser, and watch the network response. `curl`-ing a form POST does not work and is
 not worth attempting. Without a browser, run the search and hand the candidate a ranked queue of links.
 
-Three things about that browser, each of which has cost a wasted hour:
-
-- **The file chooser is sandboxed to the workspace.** Uploading the résumé from `~/Documents` or
-  `~/Downloads` fails with "outside allowed roots". Copy it into the working directory once, at the start
-  of the run, and attach it from there.
-- **Ask the candidate to log into their mail in that same browser, on day one.** Greenhouse gates
-  submission behind an 8-character code mailed to them (`from:greenhouse-mail.io`, "Security code for your
-  application to \<Company\>"). Logged in, you read the newest code yourself and finish the submission in
-  the same minute. Not logged in, every code is a round-trip, and each failed submit invalidates the last
-  code — the pending application sits there until they answer.
-- **Keep the tab open** while you wait for anything. A Greenhouse form holds its state, including the
-  uploaded résumé and every essay; navigating away means filling it all in again.
+Three things to set up on day one, each of which has cost a wasted hour: copy the résumé into the
+working directory (the file chooser is sandboxed and can't reach `~/Documents`); have the candidate log
+into their mail in that browser (Greenhouse gates submission behind an emailed code — `references/email.md`);
+and never navigate away from a half-filled form while waiting, it loses its state. Details in
+`references/ats-playbook.md`.
 
 ## Run autonomously
 
@@ -39,14 +32,14 @@ The candidate hired you to do this instead of doing it themselves. Applying to 1
 
 **Batch every question.** When you genuinely need input, collect the open questions and ask them together at a natural break, then keep working on everything that doesn't depend on the answer. A blocked application goes on a blocked list; it does not stop the run.
 
-**Only these stop you** (the full list is in "Red flags" below): no truthful answer exists, the employer bans AI assistance, or the candidate's stated hard limits are triggered. Everything else — an ambiguous title, a location you have to reason about, a cover letter to write — you decide.
+**Only the "Red flags" list below stops you.** Everything else — an ambiguous title, a location you have to reason about, a cover letter to write — you decide.
 
 **Session breaks are normal.** The candidate will go to sleep mid-run. Keep going, and make the log good enough that the next session can resume from it cold.
 
 ## Workflow
 
-0. **Resume** — read `applied-list.md` and `profile.md` first, then sweep the mail. The log is the only
-   record of what has already been sent; a fresh session that skips it re-applies to the same jobs. And
+0. **If resuming** — read `applied-list.md` and `profile.md` first, then sweep the mail. The log is the
+   only record of what has already been sent; a session that skips it re-applies to the same jobs. And
    replies have deadlines while postings don't — a scheduling link that expired while you swept 16,000
    boards is a worse outcome than ten applications not sent. See `references/after-submitting.md`.
 1. **Intake** — fill `templates/profile.md`: what we're looking for, then who the candidate is.
@@ -81,26 +74,11 @@ This half lives in a fenced ```criteria``` block that `filter_postings.py` parse
 
 Ask **once, as a single batch**, for what forms demand and résumés never contain. Don't dribble these out one at a time.
 
-| Field | Why it's needed |
-|---|---|
-| Phone, city, country, timezone | Every form |
-| Citizenship + residence + work-authorisation status | Gating question on most forms |
-| Legal form (employee / sole proprietor / company) | Contractor arrangements |
-| Salary expectation + currency + period | Required, often as a number field |
-| Notice period | Required |
-| LinkedIn, GitHub, portfolio, X | Link fields |
-| Gender, race/ethnicity, veteran status | EEO sections (voluntary, but asked constantly) |
-| Pronouns | Increasingly required |
-| Willing to relocate? Which countries? | Narrows geography |
-| Hard limits | e.g. "no video interviews", "no client-facing roles" |
-| Reason for leaving — answer or skip? | If they say skip, skip when optional |
-| Street address + postcode | Some forms require it; **never invent one without asking** |
+Phone and city · citizenship, residence and work authorisation · legal form (employee / sole proprietor / company) · salary with currency and period · notice period · links · EEO answers · pronouns · relocation · hard limits · whether to answer "reason for leaving" · street address (**never invent one without asking**). The full questionnaire, with the facts worth collecting once for essays, is the second half of `templates/profile.md`.
 
 Write answers to `profile.md` and re-read it at the start of every session. Its last section is append-only: every constraint the candidate reveals mid-run goes there, dated, because that is what a resumed session reads instead of asking the same question again.
 
 **The résumé itself.** Get the actual file and attach that same file everywhere. Don't rewrite it per application — a tailored cover letter earns its time, a tailored CV doesn't, and two CVs that disagree become a problem in an interview. Name it `<Firstname>_<Lastname>_CV.pdf`; some ATS show the filename to the reviewer. If they have no PDF, ask for one rather than generating a document that claims to be their CV.
-
-**Ask for email access early.** Greenhouse and others gate submission behind an emailed code. Say plainly: "log into your mail in the browser I'm driving, and I'll pull verification codes myself." Without it, every code costs a round-trip to the candidate.
 
 ## Step 2: Filter before you open
 
@@ -137,7 +115,7 @@ These are not style preferences. Breaking them produces a candidate who gets cau
 - **Never claim a technology, year count, or credential that isn't in `profile.md`.** If the minimum option overstates them, that's a gate — ask.
 - **State gaps plainly in free-text answers.** "My Python is working-level, not primary" costs nothing and buys credibility.
 - **Never invent personal data** — address, employer, education, immigration status.
-- **Transcontinental and ambiguous geography**: answering "yes" to a defensible reading is fine *only if* the exact city and timezone appear in a free-text field on the same form.
+- **Ambiguous geography** ("are you in a European timezone?"): answering "yes" to a defensible reading is fine *only if* the exact city and timezone go into a free-text field on the same form. A question that states its range or its auto-reject ("resident in GMT+0…GMT+3?") is a gate, not a puzzle — stop.
 - If the employer forbids AI-written applications, **stop and hand it to the candidate** with a facts sheet. Don't paraphrase your way around it.
 
 ## Writing answers
@@ -173,23 +151,16 @@ un-send it.
 So the log is not documentation, it is the deduplication index, and it is the only memory you have:
 a new session starts with none of the last one's context.
 
-**Before every application, and before sourcing, load `applied-list.md` and build two sets from it:**
+**Before sourcing and before every application, check the log.** `filter_postings.py --applied
+applied-list.md` matches on **company + role title**, not URL — the same role is reachable at several
+URLs and boards rewrite them — and compares company names by containment, because the log holds a
+human name ("Holepunch (Tether)") while the sweep holds an ATS token ("holepunch").
 
-```bash
-grep -oE 'https?://[^ |]+' applied-list.md | sed 's#/$##' | sort -u > applied_urls.txt   # exact postings
-# and the ATS org tokens inside those URLs -> applied_orgs.txt   (ashby:railway, greenhouse/okx, …)
-```
-
-`filter_postings.py --applied applied-list.md` does the same job on **company + role title**, which
-catches the case the URL set misses: the same role reachable at several URLs, or a board that rewrote
-them. It compares company names by containment, because the log holds a human name
-("Holepunch (Tether)") while the sweep holds an ATS token ("holepunch"). Use both.
-
-- **URL already in the set → skip it.** No re-reading the posting, no "maybe it changed".
-- **Org already in the set → still allowed, but space it out.** Several roles at one company are
+- **Already in the log → skip it.** No re-reading the posting, no "maybe it changed".
+- **Same company, different role → allowed, but space it out.** Several roles at one company are
   normal and often smart; several *in a row on one Ashby board* trip the spam filter. Interleave
   other employers between them.
-- Filter on these sets *before* fetching bodies — deduplication is free, fetching is not.
+- Dedup *before* fetching bodies — deduplication is free, fetching is not.
 
 Write the row the moment a submission confirms, not at the end of the batch. A crash, a context
 limit or a closed laptop between submit and log turns a sent application into an invisible one,
@@ -197,11 +168,13 @@ and the next session re-sends it.
 
 ## Red flags — stop and ask
 
-- A required field has no truthful option
+This is the complete list. Nothing else stops the run.
+
+- A required field has no truthful option — including an address, ID number or salary history you weren't given
 - The employer bans AI assistance
-- A video or AI interview is required
-- The form wants an address, ID number, or salary history you weren't given
-- You're about to answer "yes" to a work-authorisation question you can't verify
+- A video or AI interview is required, or any other stated hard limit is triggered
+- You're about to answer "yes" to a work-authorisation or residency question you can't verify
+- Anything outward-facing in the candidate's name *beyond the application itself*: sending an email, booking an interview slot, accepting a take-home. Draft it, show it, wait.
 
 ## References
 

@@ -4,6 +4,17 @@ Per-platform form mechanics. Every entry here cost a failed submission to learn.
 
 ## Universal rules
 
+**Three things to set up before the first form**, each of which has cost a wasted hour:
+
+- **The file chooser is sandboxed to the workspace.** Uploading the résumé from `~/Documents` or
+  `~/Downloads` fails with "outside allowed roots". Copy it into the working directory once, at the
+  start of the run, and attach it from there.
+- **Mail logged in, in the same browser.** Greenhouse gates submission behind an 8-character emailed
+  code, and each failed submit invalidates the previous one — see `email.md`. Not logged in, every
+  code is a round-trip and the application sits half-done until the candidate answers.
+- **Keep the tab open while you wait for anything.** A Greenhouse form holds its state, including
+  the uploaded résumé and every essay; navigating away means filling it all in again.
+
 **Check the form for gates before filling it.** Dump every field label first:
 
 ```js

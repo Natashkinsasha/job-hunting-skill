@@ -16,8 +16,6 @@ mostly), not a bad posting.
 import argparse, concurrent.futures, html, json, re, ssl, sys, urllib.parse, urllib.request
 
 CTX = ssl.create_default_context()
-CTX.check_hostname = False
-CTX.verify_mode = ssl.CERT_NONE
 UA = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
