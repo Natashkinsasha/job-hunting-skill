@@ -68,17 +68,56 @@ and a few carry a genuine worldwide flag. Feed them to `discover_boards.py --nam
 | RemoteOK | `remoteok.com/api` | Noisy, but a good source of company names |
 | NoDesk | `nodesk.co/remote-jobs/index.xml` | ~10 postings |
 
+**Measured on a second full run, months later, with the four API feeds above:** 516 rows in, 16 past
+the title/geography filter, **0 genuinely new**. Everything that survived was either already in the log,
+already blocked for a known reason, or misfiled by title — a "FullStack Engineer" that turned out to be
+Laravel/PHP once the body was fetched. Aggregators are a cheap top-up on a fresh search and close to
+worthless on a repeat one; budget minutes, not hours, and never let them delay the board sweep.
+
+## One-off boards: check for an accidental public API first
+
+A single link from a recruiter or an aggregator often lands on a small board built with a no-code tool,
+where the posting text is rendered client-side and `curl` returns an empty shell. Before driving a
+browser, check whether the platform is answering questions for free.
+
+**Bubble** (`*.bubbleapps.io` and custom domains on it — look for `window._bubble_page_load_data` or
+`/package/run_js/` in the HTML) exposes a Data API at `https://<host>/api/1.1/obj/<type>`. Many owners
+never turn it off. Probing costs one request and the error message is the hint you need:
+
+```sh
+curl -s https://<host>/api/1.1/obj/jobs            # guess the type name
+# {"statusCode":404,"body":{"status":"NOT_FOUND","message":"Type not found jobs"}}
+#   → the API is ON, the type name is wrong. Try: jobs, job, vacancies, positions, listings, user
+# a JSON body with response.results → you have the whole table
+curl -s "https://<host>/api/1.1/obj/jobs?limit=100&cursor=0"   # page via response.remaining
+```
+
+Measured on one agency board: 945 records, 37 of them visible and approved, with fields the rendered
+page never shows — in that case a `Salary range` the posting itself omitted, which decided whether five
+of the roles were worth opening at all. It also turns "is there more work here?" into one command
+instead of a browsing session.
+
+Two cautions. Only read what the site already publishes — a board that exposes `user` is a
+misconfiguration, not an invitation. And the API reflects raw rows, so filter on the site's own
+visibility fields (`Visible`, a status like `Approved`) or you will read drafts and expired postings.
+
 ## Channels that need the candidate's own account
 
 You cannot register on someone's behalf. Flag these early so the candidate can decide whether to
 open them, because a couple are the only channels with a *continuous* flow rather than a snapshot:
 
-- **LinkedIn Easy Apply** — hundreds of one-click applications, needs their logged-in profile.
+- **LinkedIn — OFF LIMITS.** Not "needs their account": do not open it at all. LinkedIn bans accounts
+  for automated access, and the candidate's profile is what recruiters check after every application
+  elsewhere, so a ban damages the whole search. See "Never touch LinkedIn" in `SKILL.md`. A role that
+  exists only behind a `linkedin.com` / `lnkd.in` link is blocked, not a to-do.
 - **Djinni** (`djinni.co/jobs/?primary_keyword=Node.js&exp_level=5y&employment=remote`) — RU/UA-speaking
   market, many B2B contracts. Browser-rendered; applying needs their account.
 - **Contractor marketplaces** — Lemon.io, Proxify, A.Team, Toptal, Braintrust. One profile plus their
   interview, then a project stream. The only channel that keeps producing after the sweep is exhausted.
-- **Telegram job channels** — not readable without their account.
+- **Telegram job channels** — need their account (QR login from their phone). Measured on one senior
+  remote candidate: ~60 channels, 8 feeds read, **1 matching vacancy** against 16 applications sent the
+  same evening through Wellfound/YC/Proxify. Treat as background, time-box it, and read
+  `references/telegram.md` first — most channels are aggregator relays, marketing/arbitrage, or ad dumps.
 - **YC Work at a Startup**, **Otta / Welcome to the Jungle**, **Wellfound** — login-gated.
 
 ## Channels confirmed dead or not worth it
@@ -103,7 +142,8 @@ open them, because a couple are the only channels with a *continuous* flow rathe
 - **hiring.cafe** — good filters, no usable API (405/404). Only reachable through a browser:
   `https://hiring.cafe/?searchState={"workplaceTypes":["Remote"],"searchQuery":"..."}`,
   wait ~6 s, read `document.body.innerText`. Rate-limits into a Cloudflare challenge quickly.
-- **LinkedIn / Indeed** — hostile to automation and mostly reposts of the above. Not worth the fight.
+- **Indeed** — hostile to automation and mostly reposts of the above. Not worth the fight. (LinkedIn is not
+  a "verdict" at all — it is prohibited; see above.)
 
 ## Filtering: the geography test that works
 
@@ -137,3 +177,17 @@ consequences. First, plan for depth per application rather than volume; there ar
 roles to spray. Second, the channel genuinely does get exhausted after a couple of days, and
 when it does, further yield comes only from the account-gated channels above — not from
 sweeping harder.
+
+**A repeat sweep, same candidate, about a week later**, gives you the shape of the steady state:
+15,880 boards → **264,698 postings** → 260 past title+geography → **185** after bodies → roughly
+15 worth opening → **7 sent**. The drop from 185 to 15 is not the filter being weak; it is what the
+filter cannot see from a title and a location — the stack named only in the body, the residency
+requirement stated in the form, the AI ban in a consent checkbox, the role already applied to under a
+different URL. Expect single digits of new applications per sweep once the first pass is done, and
+tell the candidate that number up front, because "find me more" sounds like it should return dozens.
+
+Two related reflexes worth having at that point. Sweep totals swing a lot between runs (~130k vs
+~265k postings on the same board list) — that is board availability and transient failures, not the
+market moving, so do not read a trend into it. And when a sweep returns little, the honest report is
+the funnel, not an apology: a filter that drops 99.99% is doing its job, and the constraint is the
+market rather than the search.
