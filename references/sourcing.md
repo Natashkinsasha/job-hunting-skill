@@ -82,24 +82,49 @@ browser, check whether the platform is answering questions for free.
 
 **Bubble** (`*.bubbleapps.io` and custom domains on it — look for `window._bubble_page_load_data` or
 `/package/run_js/` in the HTML) exposes a Data API at `https://<host>/api/1.1/obj/<type>`. Many owners
-never turn it off. Probing costs one request and the error message is the hint you need:
+never turn it off, and `scripts/fetch_bubble_board.py` reads it:
 
 ```sh
-curl -s https://<host>/api/1.1/obj/jobs            # guess the type name
-# {"statusCode":404,"body":{"status":"NOT_FOUND","message":"Type not found jobs"}}
-#   → the API is ON, the type name is wrong. Try: jobs, job, vacancies, positions, listings, user
-# a JSON body with response.results → you have the whole table
-curl -s "https://<host>/api/1.1/obj/jobs?limit=100&cursor=0"   # page via response.remaining
+python3 scripts/fetch_bubble_board.py choicy.work --out rows.json --bodies bodies.json
+python3 scripts/fetch_bubble_board.py <host> --probe      # is the API open, and what's the type called?
 ```
 
-Measured on one agency board: 945 records, 37 of them visible and approved, with fields the rendered
-page never shows — in that case a `Salary range` the posting itself omitted, which decided whether five
-of the roles were worth opening at all. It also turns "is there more work here?" into one command
-instead of a browsing session.
+`--probe` is the cheap first move, because the error message is the answer:
+`{"status":"NOT_FOUND","message":"Type not found jobs"}` means the API is **on** and only the type name
+is wrong, so the script keeps guessing (`jobs`, `job`, `vacancies`, `positions`, `listings`, …). No
+reply at all means this one really does need a browser. Boards already mapped live in
+`data/bubble_boards.json`; anything else takes `--type` plus the field flags.
+
+The output drops straight into the normal pipeline — `rows.json` is the sweep shape and `bodies.json` is
+`fetch_postings.py`'s, so `filter_postings.py --bodies` accepts it with nothing re-fetched. One request
+gives you both, because the description is already in the record.
+
+**Measured on one agency board: 946 records, 38 live, and the rendered page showed none of the salary
+bands.** That is the recurring reason to do this at all — the API carries fields the page omits, and in
+that case the band decided whether five of the roles were worth opening.
+
+Three things the script handles that a hand-rolled `curl` gets wrong, each learned by getting it wrong:
+
+- **A board with no location field must emit an empty location, never `"Remote"`.** `filter_postings.py`
+  keeps a row whose location is blank and judges it on the body; a row that says "Remote" is tested
+  against `geo_in`, matches nothing, and is dropped with a reason that reads as if it were correct.
+- **Geography is often stated below the filter's reading window.** On that same board the only sentence
+  naming it — "100% remote, work from anywhere … some overlap with Asian and European time zones" — sat
+  at character 6394, and `filter_postings.py` reads the first 3000. The one genuinely worldwide role on
+  the board was rejected for "no geo_in term". The script hoists that line into a `Location note:` header
+  rather than widening the window for every board.
+- **BBCode hides the apply link.** Bubble stores rich text as `[url=…]…[/url]`; stripping tags naively
+  throws the href away, and on agency boards that href *is* the application form on a different ATS.
 
 Two cautions. Only read what the site already publishes — a board that exposes `user` is a
-misconfiguration, not an invitation. And the API reflects raw rows, so filter on the site's own
-visibility fields (`Visible`, a status like `Approved`) or you will read drafts and expired postings.
+misconfiguration, not an invitation, and the script refuses those type names. And the API reflects raw
+rows, so filter on the site's own visibility fields (`Visible`, a status like `Approved`) or you will
+read drafts and expired postings: 946 records, 38 of them real.
+
+**What this channel is and isn't.** It is a good answer to "a recruiter sent me one link — is there more
+work behind it?", and it answers it in one command. It is not a cross-company source: each board is its
+own host, there is no index of them, and an agency board fronts for clients it doesn't name, so the
+employer stays hidden until you read the description.
 
 ## Channels that need the candidate's own account
 
