@@ -39,9 +39,11 @@ agreed search; the skill does not ask again for each matching vacancy.
 | `SKILL.md` | The workflow: intake, autonomy rules, filtering order, hidden gates, honesty rules, logging |
 | `references/sourcing.md` | Every channel with measured yield — ATS endpoints, aggregator feeds, what's account-gated, what's dead |
 | `references/ats-playbook.md` | Per-ATS form mechanics and the bugs that silently eat submissions |
-| `references/answering.md` | Cover letters, essay questions, geography and salary wording, AI-ban forms |
+| `references/answering.md` | Cover letters, essay questions, geography and salary wording, AI clauses — ban vs. identify-yourself |
 | `references/email.md` | Verification codes, applying by email, driving Gmail, the privacy line |
 | `references/after-submitting.md` | Replies, statuses, the blocked pile, what to do when the channel runs out |
+| `references/login-gated-sites.md` | Sites needing the candidate's own account — who does which step, and how résumé parsers mangle a CV |
+| `references/telegram.md` | Job channels on Telegram: measured yield, the web client, and why a recruiter DM is not an application |
 | `templates/profile.md` | The intake questionnaire, and the criteria block the filter reads |
 | `data/*_companies.json` | ~27,000 board tokens, shipped with the skill |
 | `scripts/sweep_boards.py` | Sweep every Ashby/Greenhouse/Lever board → one row per posting |

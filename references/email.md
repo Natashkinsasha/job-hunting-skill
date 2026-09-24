@@ -36,7 +36,7 @@ almost nobody applies through them.
 on their word. It goes out under their name, from their address, to a real person.
 
 Subject line that works: `<Role> — <Candidate name> (<where you found it>)`, e.g.
-`HN Software Engineer — Alexander Natashkin`. Body: the cover-letter structure from
+`HN Software Engineer — <Candidate name>`. Body: the cover-letter structure from
 `answering.md`, cut to about half. Attach the CV.
 
 ### Driving Gmail through a browser tool

@@ -42,5 +42,5 @@ The full text, ready to paste or to save as a file if the field is a file input.
 
 ## Notes for the submitter
 
-Anything mechanical: "cover letter field is a file input", "location combobox — type 'Tbilisi' and
+Anything mechanical: "cover letter field is a file input", "location combobox — type the city and
 press Enter", "EEO section: decline on all three".

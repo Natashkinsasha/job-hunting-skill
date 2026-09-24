@@ -44,8 +44,48 @@ document.querySelectorAll('iframe[src*="recaptcha"],iframe[src*="cloudflare"]').
 - **Setting `.value` from JavaScript does not register.** React keeps its own state; the DOM shows your text and the form reports "Missing entry for required field". You must type: Playwright `fill()` or `pressSequentially()`. This is the single most expensive mistake on Ashby.
 - Location is a combobox — type, wait ~1.5 s, then `Enter` to take the first suggestion.
 - Resume upload: `button.ashby-application-form-input-file-dropzone-upload` opens the file chooser.
-- Success text: `Success` / `Your application was successfully submitted`.
-- **Anti-spam**: after several submissions from one IP, a board may answer "flagged as possible spam". It is per-board, not global — other Ashby boards keep working the same hour. Retrying rarely helps; hand that one to the candidate.
+- Success text: `Success` / `Your application was successfully submitted`. **Boards can customise it** —
+  WunderGraph answers "Your application just landed! 🎉", which matches neither phrase. Check for the
+  `Success` step marker or the absence of the form, not for one sentence, or you will re-submit a
+  successful application.
+- **`Location` is sometimes a COUNTRY picker, not a city one.** On some boards the autocomplete only
+  offers countries ("Georgia", "South Georgia and the South Sandwich Islands" — no cities at all). A
+  typed city stays in the box looking filled and is silently not counted; submit answers "Missing entry
+  for required field: Location". Verify the value matches an option you actually selected, not that the
+  box has text in it.
+- **The Yes/No control does not respond to a programmatic `.click()`** from injected JS — `aria-pressed`
+  stays `false` and the field submits as empty. Click it with the browser tool, then read back
+  `aria-pressed` to confirm.
+- **When a submit is rejected for un-registered fields, it names only some of them.** Three essays filled
+  the same (broken) way came back as two errors. Re-enter *every* field you filled that way, not just the
+  ones it complained about — otherwise you burn a second submit discovering the third.
+- **A field id that starts with a digit breaks `#id` selectors.** Ashby ids are UUIDs, so about half of
+  them begin with a number and `#6e488bac-…` is not a valid CSS selector — Playwright raises
+  `SyntaxError: … is not a valid selector` and it reads like a missing element rather than a bad
+  selector. Address them as `textarea[id="…"]` / `input[id="…"]` and the problem disappears.
+- **`type="tel"` is the one field `fill()` cannot set.** Every other text input on Ashby accepts
+  `fill()`; the phone field takes the value in the DOM and still submits as empty — "Missing entry for
+  required field: Phone" on a box that visibly contains a number. Use `pressSequentially()` for phone,
+  always. (Same failure mode as Greenhouse's phone widget, different cause.)
+- **The "Autofill from resume" parser is a draft, not an answer.** Uploading the CV fills name, email,
+  phone, current title and location for you — and it fills them from the CV's *headline*, so the title
+  can be a self-description rather than the employer's job title, and the location can be the word
+  "Remote". Read back every field it touched before submitting.
+- **Anti-spam**: a board may answer "Your application submission was flagged as possible spam". Two
+  separate things produce it, and they need different responses:
+  - **First submission of the session, on a board you have never touched.** Then it is not volume — it is
+    the exit IP. Measured: a run whose traffic left through a commercial VPN on a *hosting* ASN was
+    flagged on the very first submit; the identical form went through on the immediate retry. **Retry
+    once before concluding anything.** If retries keep failing, check the public IP
+    (`curl -s https://ipinfo.io/json`) — a datacenter/VPN `org` is the likely cause, and asking the
+    candidate to drop the VPN for the session fixes it in a way no amount of retrying will.
+  - **Several submissions to the same board in a row.** That is the volume rule: it is per-board, not
+    global, other Ashby boards keep working the same hour, and retrying rarely helps. Interleave other
+    employers between roles at one company.
+
+  **Either way, do not navigate away to "start fresh".** Ashby keeps the whole form after a rejected
+  submit — every essay, the uploaded résumé, the resolved location — and loses all of it on reload.
+  The retry is one click; the reload costs you the entire form again.
 
 Public API for listings:
 `https://api.ashbyhq.com/posting-api/job-board/<org>?includeCompensation=true`
@@ -131,6 +171,32 @@ API: `https://api.lever.co/v0/postings/<org>?mode=json` (EU: `api.eu.lever.co`).
 body `{"appliedFacets":{},"limit":20,"offset":0,"searchText":"..."}` — public, no auth.
 
 **Discovery only.** Applying requires creating an account per company, which you should not do on someone's behalf. Also: the location label on a Workday posting frequently contradicts the body text — a job tagged "Worldwide" can say "must be located within the U.S." three paragraphs in. Read the body.
+
+## Regional and long-tail ATSes
+
+You will meet one every few dozen applications, usually because an aggregator or a recruiting agency
+links out to it. Two habits cover most of them.
+
+- **An HTTP 500 on the page does not mean the form is broken.** Observed on `careers.headly.ru`: the
+  document arrives with status 500 *and* a fully working React application underneath. Judge the form
+  by whether its fields and submit button behave, not by the status line.
+- **If it parses the résumé, re-read every field it filled.** Small ATSes lean on a parser harder than
+  Ashby does and get more of it wrong — the same upload produced a correct name, email and phone, a job
+  title assembled from the CV headline rather than the last employer's actual title, and the literal
+  string "Remote" in the Location field. Overwrite, don't rubber-stamp.
+- Localised forms ask for fields the English-speaking ATSes never do — patronymic, date of birth,
+  marital status, a photograph. Leave the optional ones blank rather than inventing them, and treat a
+  required one you cannot answer truthfully as a gate (see SKILL.md → Red flags).
+
+## Postings that limit how often you may apply
+
+Some boards state a rate limit on the application page itself — "candidates may not apply more than 2
+times in any 30 day span for any job" is real Ashby copy. This is not decoration: it is the employer
+telling you the rule they enforce. Read the banner above the form before filling it, count the
+candidate's existing rows for that company in the log, and skip rather than spend the allowance.
+Related and worse: the same posting reached through a different channel is still the same posting —
+a role applied to through an aggregator turns up again in the next board sweep under the employer's
+own URL, and only company+role deduplication catches it.
 
 ## Network failures that look like application failures
 
