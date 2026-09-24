@@ -1,0 +1,23 @@
+{
+  "_README": [
+    "Job boards built on Bubble that leave their Data API open, and how to read each one.",
+    "Add a host by probing https://<host>/api/1.1/obj/<type> — see references/sourcing.md.",
+    "Every key except `host` and `type` is optional; fields absent from a board are left empty",
+    "rather than guessed, because an invented location is worse than no location."
+  ],
+  "boards": [
+    {
+      "host": "choicy.work",
+      "org": "CHOICY",
+      "type": "jobs",
+      "url": "https://choicy.work/job/{_id}",
+      "title": "Name",
+      "location": null,
+      "body": "Description",
+      "visible_if": {"Visible": true, "jobStatus": "Approved"},
+      "extras": ["Speciality", "Grade", "Type", "schedule", "Remote"],
+      "salary": {"range": "Salary range", "currency": "Currency", "period": "Period"},
+      "note": "A recruiting agency's board: it fronts for client companies, so `org` is the agency and the employer is described but not named. No location field exists at all — geography lives in the description only."
+    }
+  ]
+}

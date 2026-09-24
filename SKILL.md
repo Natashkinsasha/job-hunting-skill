@@ -72,6 +72,11 @@ python3 scripts/filter_postings.py rows.json --profile profile.md --applied appl
         --bodies bodies.json --out shortlist.json --rejects rejects.json
 ```
 
+A single board someone sent you is a different shape of job: `scripts/fetch_bubble_board.py <host>`
+reads a Bubble-built board's Data API and writes both files in one call, so it joins the pipeline at
+the `--bodies` step. `--probe` first tells you whether that board is readable at all — see
+`references/sourcing.md`.
+
 Create `applied-list.md` with the Logging table header before using `--applied`, or omit that flag
 on a first search with no application history. A partial sweep is incomplete coverage; retry failed
 boards before concluding there are no more roles. A fully failed ATS exits without replacing the output.
@@ -337,10 +342,12 @@ These pause the affected application within the authorized mode; continue indepe
 - `templates/profile.md` — the intake questionnaire and the criteria block the filter reads
 - `templates/draft.md` — one file per application: every field's answer, letter, essays, ready/blocked
 - `data/*_companies.json` — ~27,000 board tokens, shipped with the skill so a sweep needs no third party
+- `data/bubble_boards.json` — Bubble boards already mapped (type name, field names, visibility rule)
 - `scripts/sweep_boards.py` — sweep every Ashby/Greenhouse/Lever board (`--refresh` to merge newer tokens)
 - `scripts/filter_postings.py` — cut a sweep to a shortlist using the profile, with audited rejections
 - `scripts/fetch_postings.py` — resolve arbitrary job links to title/location/body
 - `scripts/form_questions.py` — read a Greenhouse application form and flag its gates, no browser
+- `scripts/fetch_bubble_board.py` — read a Bubble-built board's Data API: rows and bodies in one call, `--probe` to test
 - `scripts/discover_boards.py` — find boards no token list has, by probing slugified company names
 
 All scripts are stdlib-only Python 3.

@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import fetch_bubble_board as bubble
 import fetch_postings as fetch
 import filter_postings as shortlist
 import sweep_boards as sweep
@@ -174,6 +175,81 @@ class RegressionTests(unittest.TestCase):
             with patch.object(sweep, "get", side_effect=response), self.assertRaises(SystemExit):
                 self.run_main(sweep, ["--ats", "ashby", "greenhouse", "--out", self.root / "rows.json"])
         self.assertFalse((self.root / "rows.json").exists())
+
+
+    # --- Bubble boards -------------------------------------------------------
+
+    def bubble_board(self, **over):
+        board = {"host": "example.com", "org": "Acme", "type": "jobs",
+                 "url": "https://example.com/job/{_id}", "title": "Name",
+                 "location": None, "body": "Description",
+                 "visible_if": {"Visible": True}, "extras": ["Grade"],
+                 "salary": {"range": "Salary range", "currency": "Currency", "period": "Period"}}
+        board.update(over)
+        return board
+
+    def test_bubble_missing_location_stays_empty_not_remote(self):
+        """A board with no location field must emit "", which filter_postings keeps.
+
+        Writing "Remote" instead is tested against geo_in, matches nothing, and the row
+        is dropped with a reason that reads as if it were correct."""
+        rows, bodies = bubble.to_rows(
+            [{"_id": "1", "Name": "Backend Engineer", "Visible": True,
+              "Description": "We use TypeScript.", "Remote": True}], self.bubble_board())
+        self.assertEqual(rows[0][3], "")
+        self.assertEqual(bodies[0][2], "")
+        # Pass one runs on locations alone, and that is where "Remote" would be fatal.
+        self.assertEqual([r["title"] for r in self.filter(rows)], ["Backend Engineer"])
+        remoteish = [r[:3] + ["Remote"] + r[4:] for r in rows]
+        self.assertEqual(self.filter(remoteish), [])
+
+    def test_bubble_hoists_geography_stated_below_the_filter_window(self):
+        """Measured on a real board: the only sentence naming geography sat at char 6394,
+        and filter_postings reads the first 3000."""
+        buried = "Perks\n" + ("padding. " * 500) + "\n100% remote, worldwide\n"
+        rows, bodies = bubble.to_rows(
+            [{"_id": "1", "Name": "Backend Engineer", "Visible": True,
+              "Description": "We use TypeScript.\n" + buried}], self.bubble_board())
+        self.assertGreater(bodies[0][3].find("worldwide", 3000), -1,
+                           "the source really does bury it past the filter's window")
+        self.assertIn("Location note: 100% remote, worldwide", bodies[0][3][:120])
+        self.assertEqual([r["title"] for r in self.filter(rows, bodies=bodies)],
+                         ["Backend Engineer"])
+
+    def test_bubble_keeps_the_apply_link_out_of_bbcode(self):
+        rows, bodies = bubble.to_rows(
+            [{"_id": "1", "Name": "Backend Engineer", "Visible": True,
+              "Description": "[h3][b]How to apply[/b][/h3]"
+                             "[url=https://ats.example/x]the form[/url] TypeScript"}],
+            self.bubble_board())
+        self.assertIn("the form (https://ats.example/x)", bodies[0][3])
+        self.assertNotIn("[h3]", bodies[0][3])
+
+    def test_bubble_invisible_records_are_dropped_and_salary_is_surfaced(self):
+        records = [{"_id": "1", "Name": "Live", "Visible": True, "Grade": "Senior",
+                    "Salary range": [0, 10000], "Currency": "USD", "Period": "Month",
+                    "Description": "TypeScript"},
+                   {"_id": "2", "Name": "Draft", "Visible": False, "Description": "TypeScript"}]
+        rows, bodies = bubble.to_rows(records, self.bubble_board())
+        self.assertEqual([r[2] for r in rows], ["Live"])
+        self.assertIn("Salary: 10000 USD Month", bodies[0][3])
+
+    def test_bubble_probe_reads_type_not_found_as_api_enabled(self):
+        missing = json.dumps({"statusCode": 404, "body": {"status": "NOT_FOUND"}})
+        with patch.object(bubble, "get", return_value=missing):
+            found, note = bubble.probe("example.com", guesses=["jobs"])
+        self.assertIsNone(found)
+        self.assertIn("Data API is ON", note)
+        with patch.object(bubble, "get", return_value='{"response":{"results":[]}}'):
+            found, _ = bubble.probe("example.com", guesses=["jobs"])
+        self.assertEqual(found, "jobs")
+
+    def test_bubble_refuses_to_read_people(self):
+        with patch.object(sys, "argv", ["bubble", "example.com", "--type", "users"]):
+            with self.assertRaises(SystemExit) as caught:
+                bubble.main()
+        self.assertIn("people, not postings", str(caught.exception))
+
 
 
 if __name__ == "__main__":

@@ -52,6 +52,8 @@ agreed search; the skill does not ask again for each matching vacancy.
 | `scripts/form_questions.py` | Read a Greenhouse application form and flag its gates — no browser |
 | `references/parallel.md` | Parallel drafting, serial submission — and why one-agent-per-vacancy fails |
 | `templates/draft.md` | One file per application, ready or blocked, consumed by the submitter |
+| `scripts/fetch_bubble_board.py` | Read a Bubble-built job board's Data API — rows and bodies in one call |
+| `data/bubble_boards.json` | Bubble boards already mapped: type name, field names, visibility rule |
 | `scripts/discover_boards.py` | Find boards no token list has, by probing slugified company names |
 
 All scripts are stdlib-only Python 3 — no dependencies, no API keys, no accounts.
